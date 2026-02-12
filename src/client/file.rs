@@ -21,15 +21,10 @@ pub struct SongInfo {
     pub duration: Duration,
 }
 
-pub struct AudioFile {
-    pub path: PathBuf,
-    pub info: SongInfo,
-}
-
-impl AudioFile {
+impl SongInfo {
     pub async fn read<P: Into<PathBuf>>(path: P) -> Result<Self, AudioFileError> {
         let path = path.into();
-        let (info, path) = tokio::task::spawn_blocking(move || {
+        let info = tokio::task::spawn_blocking(move || {
             lofty::read_from_path(&path).map(|metadata| {
                 let Some(tag) = metadata.primary_tag() else {
                     return Err(AudioFileError::MissingTags);
@@ -52,20 +47,17 @@ impl AudioFile {
 
                 let duration = metadata.properties().duration();
 
-                Ok((
-                    SongInfo {
-                        artist_name,
-                        album_name,
-                        track_name,
-                        duration,
-                    },
-                    path,
-                ))
+                Ok(Self {
+                    artist_name,
+                    album_name,
+                    track_name,
+                    duration,
+                })
             })
         })
         .await
         .unwrap()??;
 
-        Ok(Self { path, info })
+        Ok(info)
     }
 }

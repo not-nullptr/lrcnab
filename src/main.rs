@@ -1,12 +1,5 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
 use crate::{client::LrcLib, watcher::Watcher};
-use async_walkdir::WalkDir;
-use futures::StreamExt;
-use tokio::{sync::Semaphore, task::JoinSet};
+use std::path::{Path, PathBuf};
 
 mod client;
 mod entry;
