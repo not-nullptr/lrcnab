@@ -1,5 +1,8 @@
-use lofty::{file::TaggedFileExt, tag::ItemKey};
-use std::path::PathBuf;
+use lofty::{
+    file::{AudioFile as _, TaggedFileExt},
+    tag::ItemKey,
+};
+use std::{path::PathBuf, time::Duration};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -15,7 +18,7 @@ pub struct SongInfo {
     pub artist_name: String,
     pub album_name: String,
     pub track_name: String,
-    pub file_path: String,
+    pub duration: Duration,
 }
 
 pub struct AudioFile {
@@ -26,43 +29,43 @@ pub struct AudioFile {
 impl AudioFile {
     pub async fn read<P: Into<PathBuf>>(path: P) -> Result<Self, AudioFileError> {
         let path = path.into();
-        let (metadata, path) = tokio::task::spawn_blocking(move || {
-            lofty::read_from_path(&path).map(|file| (file, path))
+        let (info, path) = tokio::task::spawn_blocking(move || {
+            lofty::read_from_path(&path).map(|metadata| {
+                let Some(tag) = metadata.primary_tag() else {
+                    return Err(AudioFileError::MissingTags);
+                };
+
+                let artist_name = tag
+                    .get_string(ItemKey::TrackArtist)
+                    .ok_or(AudioFileError::MissingTags)?
+                    .to_string();
+
+                let album_name = tag
+                    .get_string(ItemKey::AlbumTitle)
+                    .ok_or(AudioFileError::MissingTags)?
+                    .to_string();
+
+                let track_name = tag
+                    .get_string(ItemKey::TrackTitle)
+                    .ok_or(AudioFileError::MissingTags)?
+                    .to_string();
+
+                let duration = metadata.properties().duration();
+
+                Ok((
+                    SongInfo {
+                        artist_name,
+                        album_name,
+                        track_name,
+                        duration,
+                    },
+                    path,
+                ))
+            })
         })
         .await
-        .unwrap()?;
+        .unwrap()??;
 
-        let Some(tag) = metadata.primary_tag() else {
-            return Err(AudioFileError::MissingTags);
-        };
-
-        let artist_name = tag
-            .get_string(ItemKey::TrackArtist)
-            .ok_or(AudioFileError::MissingTags)?
-            .to_string();
-
-        let album_name = tag
-            .get_string(ItemKey::AlbumTitle)
-            .ok_or(AudioFileError::MissingTags)?
-            .to_string();
-
-        let track_name = tag
-            .get_string(ItemKey::TrackTitle)
-            .ok_or(AudioFileError::MissingTags)?
-            .to_string();
-
-        Ok(Self {
-            path,
-            info: SongInfo {
-                artist_name,
-                album_name,
-                track_name,
-                file_path: path.to_string_lossy().to_string(),
-            },
-        })
+        Ok(Self { path, info })
     }
-}
-
-async fn do_thing() {
-    println!("doing thing");
 }
