@@ -42,6 +42,7 @@ pub async fn handle_entry(client: LrcLib, path: PathBuf) -> color_eyre::Result<(
         // write out an empty lrc file to prevent future lookups
         File::options()
             .create(true)
+            .write(true)
             .truncate(true)
             .open(with_lrc)
             .await?;
