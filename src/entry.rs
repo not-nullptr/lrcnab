@@ -1,3 +1,5 @@
+use tokio::fs::File;
+
 use crate::client::{LrcLib, file::AudioFile};
 use std::path::PathBuf;
 
@@ -37,6 +39,13 @@ pub async fn handle_entry(client: LrcLib, path: PathBuf) -> color_eyre::Result<(
 
     let Some(track) = client.get(&file.info).await? else {
         tracing::info!(name = %file.info.track_name, "no lyrics found");
+        // write out an empty lrc file to prevent future lookups
+        File::options()
+            .create(true)
+            .truncate(true)
+            .open(with_lrc)
+            .await?;
+
         return Ok(());
     };
 
