@@ -18,7 +18,7 @@ const GET: &'static str = formatcp!("{BASE_URL}/get");
 impl LrcLib {
     pub fn new() -> reqwest::Result<Self> {
         let client = reqwest::Client::builder()
-            .user_agent("lrcnab 0.1.0 (private, contact notnullptr on discord for concerns!)")
+            .user_agent("lrcnab 0.1.0 (https://github.com/not-nullptr/lrcnab)")
             .build()?;
 
         Ok(Self { client })
