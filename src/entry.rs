@@ -1,9 +1,14 @@
-use tokio::fs::File;
+use tokio::{fs::File, sync::Semaphore};
 
 use crate::client::{LrcLib, file::SongInfo};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
-pub async fn handle_entry(client: LrcLib, path: PathBuf) -> color_eyre::Result<()> {
+pub async fn handle_entry(
+    client: LrcLib,
+    path: PathBuf,
+    sem: Arc<Semaphore>,
+) -> color_eyre::Result<()> {
+    let _permit = sem.acquire_owned().await?;
     let metadata = tokio::fs::metadata(&path).await?;
 
     if !metadata.is_file() {

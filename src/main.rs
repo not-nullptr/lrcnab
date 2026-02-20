@@ -1,5 +1,10 @@
+use tokio::sync::Semaphore;
+
 use crate::{client::LrcLib, watcher::Watcher};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 mod client;
 mod entry;
@@ -22,7 +27,9 @@ async fn main() -> color_eyre::Result<()> {
         std::process::exit(1);
     };
 
-    if let Err(e) = scan::initial_scan(client.clone(), Path::new(&path)).await {
+    let sem = Arc::new(Semaphore::new(16));
+
+    if let Err(e) = scan::initial_scan(client.clone(), Path::new(&path), sem.clone()).await {
         tracing::error!(error = %e, "error during initial scan");
     }
 
@@ -30,8 +37,9 @@ async fn main() -> color_eyre::Result<()> {
 
     while let Some(path) = watcher.recv().await {
         let client = client.clone();
+        let sem = sem.clone();
         tokio::spawn(async move {
-            if let Err(e) = entry::handle_entry(client, path).await {
+            if let Err(e) = entry::handle_entry(client, path, sem).await {
                 tracing::error!(error = %e, "error processing file");
             }
         });
